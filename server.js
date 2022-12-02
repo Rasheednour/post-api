@@ -113,6 +113,22 @@ function getPost(postID) {
     });
 }
 
+/*
+Params:None
+
+Returns: All post entities in Datastore
+*/
+function getPosts() {
+    const q = datastore.createQuery(POSTS);
+    return datastore.runQuery(q).then((entities) => {
+        // Use Array.map to call the function fromDatastore. This function
+        // adds id attribute to every element in the array at element 0 of
+        // the variable entities
+        return entities[0].map(fromDatastore);
+    });
+}
+
+
 
 /* -------------Home Page Controller Functions ------------- */
 
@@ -215,10 +231,10 @@ router.post('/posts', function (req,res){
 Get a post from Datastore using a postID
 */
 router.get('/posts/:post_id', function(req,res){
-    // get the userID from the path parameters
+    // get the postID from the path parameters
     const postID = req.params.post_id
 
-    // call a function to get the user from Datastore, then return the user if exists
+    // call a function to get the post from Datastore, then return the post if exists
     getPost(postID).then(entity => {
         // get the user object
         const post = entity[0]; 
@@ -231,12 +247,20 @@ router.get('/posts/:post_id', function(req,res){
             // add the self attribute to the user object
             post['self'] = self;
 
-            // return the user object
+            // return the post object
             res.status(200).json(post);
         }
     })
 });
 
+/*
+Get all post entities from Datastore
+*/
+router.get('/posts', function(req,res){
+    getPosts().then(posts => {
+        res.status(200).json(posts);
+    })
+})
 
 
 /* -------------Start Server ------------- */
