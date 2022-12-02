@@ -72,6 +72,14 @@ function getUsers() {
 }
 
 
+
+function editPost(id, content, creationDate, public) {
+    const key = datastore.key([POSTS, parseInt(id, 10)]);
+    const post = { "content": content, "creationDate": creationDate, "public": public };
+    return datastore.save({ "key": key, "data": post });
+}
+
+
 /* -------------Posts Model Functions ------------- */
 
 /*
@@ -298,6 +306,49 @@ router.delete('/posts/:post_id', function (req, res) {
                     deletePost(postID).then(res.status(204).end());
             }
         });
+});
+
+
+/*
+Edit a post
+*/
+
+router.put('/posts/:post_id', function (req, res) {
+    // check if one of the required attributes is missing
+    if (!("content" in req.body) || !("creationDate" in req.body) || !("public" in req.body)){
+        res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
+    } else {
+        // get the postID form the request path parameters
+        const postID = req.params.post_id;
+        
+        // check if the post to be edited actually exists
+        getPost(postID).then(post => {
+            if (post[0] === undefined || post[0] === null) {
+
+                // The 0th element is undefined. This means there is no post with this id
+                res.status(404).json({ 'Error': 'No post with this post_id exists' });
+
+            } else {
+                // get the new post attributes
+                const content = req.body.content;
+                const creationDate = req.body.creationDate;
+                const public = req.body.public;
+
+                // edit the post in Datastore
+                editPost(postID, content, creationDate, public).then(key => {
+                    
+                    // create the self link that points to the new post object
+                    const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+
+                    // form the new post object
+                    const newPost = {"content": content, "creationDate": creationDate, "public": public, "self": self};
+
+                    // return a success and the newly edited post object
+                    res.status(200).json(newPost);
+                })
+            }
+        })
+    }
 });
 
 
