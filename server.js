@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const { Datastore } = require('@google-cloud/datastore');
 const bodyParser = require('body-parser');
+const { entity } = require('@google-cloud/datastore/build/src/entity');
 const datastore = new Datastore();
 
 const router = express.Router();
@@ -20,10 +21,32 @@ function fromDatastore(item) {
 
 /* -------------Users Model Functions ------------- */
 
+
+/*
+Params: Function takes three user attributes and creates a new entity
+in Google Datastore using the provideed attribtutes.
+
+Returns: The function returns the key to the created entity.
+*/
 function createUser(firstName, lastName, userName) {
     let key = datastore.key(USERS);
     const newUser = { "firstName": firstName, "lastName": lastName, "userName": userName};
     return datastore.save({ "key": key, "data": newUser }).then(() => { return key });
+}
+
+
+function getUser(userID) {
+    // get key from Datastore using the provided userID
+    const key = datastore.key([USERS, parseInt(userID, 10)]);
+    return datastore.get(key).then((entity) => {
+        if (entity[0] === undefined || entity[0] === null) {
+            // if no entity is found, the user doesn't exist
+            return entity;
+        } else {
+            // if an entity is found, return the user
+            return entity.map(fromDatastore);
+        }
+    });
 }
 
 /* -------------Home Page Controller Functions ------------- */
@@ -36,6 +59,9 @@ router.get('/', function (req, res) {
 
 /* -------------Users Controller Functions ------------- */
 
+/*
+Create a new user entity
+*/
 router.post('/users', function (req,res){
     // check if all the required user attributes are provided
     if(!("firstName" in req.body) || !("lastName" in req.body) || !("userName" in req.body)){
@@ -44,7 +70,7 @@ router.post('/users', function (req,res){
     } else {
         // get the firstName, lastName, and userName from the request body
         const firstName = req.body.firstName;
-        const lastName = req.body.lastname;
+        const lastName = req.body.lastName;
         const userName = req.body.userName;
         // create a new user in Datastore
         createUser(firstName, lastName, userName).then((key) => {
@@ -56,7 +82,28 @@ router.post('/users', function (req,res){
     }
 });
 
+router.get('/users/:user_id', function(req,res){
+    // get the userID from the path parameters
+    const userID = req.params.user_id
 
+    // call a function to get the user from Datastore, then return the user if exists
+    getUser(userID).then(entity => {
+        // get the user object
+        const user = entity[0]; 
+        if (user === undefined || user === null) {
+            res.status(404).json({'Error': 'No user with userID exists.'});
+        } else {
+            // construct a self link
+            const self = req.protocol + "://" + req.get("host") + "/users/" + userID;
+
+            // add the self attribute to the user object
+            user['self'] = self;
+
+            // return the user object
+            res.status(200).json(user);
+        }
+    })
+});
 
 /* -------------Start Server ------------- */
 
