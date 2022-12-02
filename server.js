@@ -351,7 +351,7 @@ router.put('/posts/:post_id', function (req, res) {
                     const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
 
                     // form the new post object
-                    const newPost = {"content": content, "creationDate": creationDate, "public": public, "self": self};
+                    const newPost = {"id": postID, "content": content, "creationDate": creationDate, "public": public, "self": self};
 
                     // return a success and the newly edited post object
                     res.status(200).json(newPost);
