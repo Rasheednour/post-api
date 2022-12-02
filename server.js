@@ -7,8 +7,9 @@ const datastore = new Datastore();
 
 const router = express.Router();
 
-// create a const to store the entity name
+// create a consts to store the entity names
 const USERS = "Users";
+const POSTS = "Posts";
 
 app.use(bodyParser.json());
 app.enable('trust proxy');
@@ -25,7 +26,7 @@ function fromDatastore(item) {
 
 /*
 Params: Function takes three user attributes and creates a new entity
-in Google Datastore using the provideed attribtutes.
+in Google Datastore using the provideed attributes.
 
 Returns: The function returns the key to the created entity.
 */
@@ -68,6 +69,25 @@ function getUsers() {
         // the variable entities
         return entities[0].map(fromDatastore);
     });
+}
+
+
+/* -------------Posts Model Functions ------------- */
+
+/*
+Function takes three post attributes and creates a new entity
+in Google Datastore using the provided attributes.
+
+Params: content: the post content.
+        creationDate: the date the post was created.
+        public: true if post is public, false if private.
+
+Returns: The function returns the key to the created entity.
+*/
+function createPost(content, creationDate, public) {
+    let key = datastore.key(POSTS);
+    const newPost = { "content": content, "creationDate": creationDate, "public": public};
+    return datastore.save({ "key": key, "data": newPost }).then(() => { return key });
 }
 
 
@@ -141,6 +161,34 @@ router.get('/users', function(req,res){
         res.status(200).json(users);
     })
 })
+
+
+/* -------------Posts Controller Functions ------------- */
+
+/*
+Create a new postr entity
+*/
+router.post('/posts', function (req,res){
+    // check if all the required user attributes are provided
+    if(!("content" in req.body) || !("creationDate" in req.body) || !("public" in req.body)){
+        // send back an error if an attribute is missing
+        res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
+    } else {
+        // get the firstName, lastName, and userName from the request body
+        const content = req.body.content;
+        const creationDate = req.body.creationDate;
+        const public = req.body.public;
+        // create a new post in Datastore
+        createPost(content, creationDate, public).then((key) => {
+            // create a self link that points to the new user using the post information
+            const self = req.protocol + "://" + req.get("host") + "/posts/" + key.id;  
+            // send a successful response and a JSON object that contains the post information
+            res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "self": self});
+        })
+    }
+});
+
+
 
 /* -------------Start Server ------------- */
 
