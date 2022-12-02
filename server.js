@@ -114,6 +114,7 @@ function getPost(postID) {
 }
 
 /*
+Function queries Datastore and returns all posts.
 Params:None
 
 Returns: All post entities in Datastore
@@ -126,6 +127,18 @@ function getPosts() {
         // the variable entities
         return entities[0].map(fromDatastore);
     });
+}
+
+/*
+Function deletes a post from Datastore that corresponds 
+with the provided postID
+Params:postID: the ID of the post to be deleted.
+
+Returns: None
+*/
+function deletePost(postID) {
+    const key = datastore.key([POSTS, parseInt(postID, 10)]);
+    return datastore.delete(key);
 }
 
 
@@ -261,6 +274,31 @@ router.get('/posts', function(req,res){
         res.status(200).json(posts);
     })
 })
+
+
+/*
+Delete a post from Datastore using a postID
+*/
+
+router.delete('/posts/:post_id', function (req, res) {
+
+    // get the post ID
+    const postID = req.params.post_id;
+
+    // check if there's a post with this ID
+    getPost(postID)
+        .then(entity => {
+            const post = entity[0];
+            // check if the returned result is empty, meaning there's not post with this postID
+            if (post === undefined || post === null) {
+                // The 0th element is undefined. This means there is no post with this id
+                res.status(404).json({ 'Error': 'No post with this postID exists' });
+            } else {       
+                    // delete the post and return status 204 with no content
+                    deletePost(postID).then(res.status(204).end());
+            }
+        });
+});
 
 
 /* -------------Start Server ------------- */
