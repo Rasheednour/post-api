@@ -91,6 +91,28 @@ function createPost(content, creationDate, public) {
 }
 
 
+/*
+Function takes a postID and fetches a post entity
+from Google Datastore using the provided ID.
+
+Params: postID: the post's ID
+
+Returns: The function returns the post entity with the provided ID.
+*/
+function getPost(postID) {
+    // get key from Datastore using the provided userID
+    const key = datastore.key([POSTS, parseInt(postID, 10)]);
+    return datastore.get(key).then((entity) => {
+        if (entity[0] === undefined || entity[0] === null) {
+            // if no entity is found, the user doesn't exist
+            return entity;
+        } else {
+            // if an entity is found, return the user
+            return entity.map(fromDatastore);
+        }
+    });
+}
+
 
 /* -------------Home Page Controller Functions ------------- */
 
@@ -186,6 +208,33 @@ router.post('/posts', function (req,res){
             res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "self": self});
         })
     }
+});
+
+
+/*
+Get a post from Datastore using a postID
+*/
+router.get('/posts/:post_id', function(req,res){
+    // get the userID from the path parameters
+    const postID = req.params.post_id
+
+    // call a function to get the user from Datastore, then return the user if exists
+    getPost(postID).then(entity => {
+        // get the user object
+        const post = entity[0]; 
+        if (post === undefined || post === null) {
+            res.status(404).json({'Error': 'No post with postID exists.'});
+        } else {
+            // construct a self link
+            const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+
+            // add the self attribute to the user object
+            post['self'] = self;
+
+            // return the user object
+            res.status(200).json(post);
+        }
+    })
 });
 
 
