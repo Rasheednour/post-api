@@ -1,5 +1,5 @@
 {
-  "name": "post_api",
+  "name": "posts_api",
   "version": "1.0.0",
   "description": "A REST API that models a simple social media application that has users, user posts, and user comments.",
   "main": "server.js",
