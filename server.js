@@ -7,6 +7,7 @@ const datastore = new Datastore();
 
 const router = express.Router();
 
+// create a const to store the entity name
 const USERS = "Users";
 
 app.use(bodyParser.json());
@@ -34,7 +35,12 @@ function createUser(firstName, lastName, userName) {
     return datastore.save({ "key": key, "data": newUser }).then(() => { return key });
 }
 
+/*
+Params: Function takes a userID and fetches a user entity
+from Google Datastore using the provided ID.
 
+Returns: The function returns the user entity.
+*/
 function getUser(userID) {
     // get key from Datastore using the provided userID
     const key = datastore.key([USERS, parseInt(userID, 10)]);
@@ -48,6 +54,23 @@ function getUser(userID) {
         }
     });
 }
+
+/*
+Params:None
+
+Returns: All user entities in Datastore
+*/
+function getUsers() {
+    const q = datastore.createQuery(USERS);
+    return datastore.runQuery(q).then((entities) => {
+        // Use Array.map to call the function fromDatastore. This function
+        // adds id attribute to every element in the array at element 0 of
+        // the variable entities
+        return entities[0].map(fromDatastore);
+    });
+}
+
+
 
 /* -------------Home Page Controller Functions ------------- */
 
@@ -82,6 +105,10 @@ router.post('/users', function (req,res){
     }
 });
 
+
+/*
+Get a user from Datastore using a userID
+*/
 router.get('/users/:user_id', function(req,res){
     // get the userID from the path parameters
     const userID = req.params.user_id
@@ -104,6 +131,16 @@ router.get('/users/:user_id', function(req,res){
         }
     })
 });
+
+
+/*
+Get all user entities from Datastore
+*/
+router.get('/users', function(req,res){
+    getUsers().then(users => {
+        res.status(200).json(users);
+    })
+})
 
 /* -------------Start Server ------------- */
 
