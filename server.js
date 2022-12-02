@@ -72,7 +72,17 @@ function getUsers() {
 }
 
 
+/*
+Function that takes new post attributes and replaces an existing post
+with the provided attributes
 
+Params: id: the existing post ID
+        content: the updated content
+        creationDate: the updated creation date, or editing date
+        public: the new public status (true or false)
+
+Returns: None
+*/
 function editPost(id, content, creationDate, public) {
     const key = datastore.key([POSTS, parseInt(id, 10)]);
     const post = { "content": content, "creationDate": creationDate, "public": public };
@@ -320,7 +330,7 @@ router.put('/posts/:post_id', function (req, res) {
     } else {
         // get the postID form the request path parameters
         const postID = req.params.post_id;
-        
+
         // check if the post to be edited actually exists
         getPost(postID).then(post => {
             if (post[0] === undefined || post[0] === null) {
@@ -351,6 +361,52 @@ router.put('/posts/:post_id', function (req, res) {
     }
 });
 
+
+/*
+partially update a post
+*/
+router.patch('/posts/:post_id', function (req, res) {
+    // get the postID
+    const postID = req.params.post_id;
+
+    // get the attributes to be edited
+    const attributes = req.body;
+
+    // first check if the post actually exists
+    getPost(postID).then(post => {
+        if (post[0] === undefined || post[0] === null) {
+
+            // The 0th element is undefined. This means there is no post with this id
+            res.status(404).json({ 'Error': 'No post with this post_id exists' });
+
+        } else {
+            // get the old post object
+            const oldPost = post[0];
+
+            // get the attributes to be updated and update the old post object accordingly
+            if ("content" in attributes) {
+                oldPost["content"] = attributes["content"];
+            }
+            if ("creationDate" in attributes) {
+                oldPost["creationDate"] = attributes["creationDate"];
+            }
+            if ("public" in attributes) {
+                oldPost["public"] = attributes["public"];
+            }
+
+            // edit the post 
+            editPost(postID, oldPost.content, oldPost.creationDate, oldPost.public).then(key => {
+               // create the self link that points to the new post object
+               const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+
+               // add the self link to the updated post object
+               oldPost["self"] = self;
+               // return a success and the newly edited post object
+               res.status(200).json(oldPost);
+            })
+        }
+    })
+});
 
 /* -------------Start Server ------------- */
 
