@@ -121,14 +121,32 @@ Params:None
 
 Returns: All post entities in Datastore
 */
-function getPosts() {
-    const q = datastore.createQuery(POSTS);
-    return datastore.runQuery(q).then((entities) => {
-        // Use Array.map to call the function fromDatastore. This function
-        // adds id attribute to every element in the array at element 0 of
-        // the variable entities
-        return entities[0].map(fromDatastore);
+function getPosts(req) {
+    let q = datastore.createQuery(POSTS).limit(5);
+    let results = {};
+    let prev;
+
+    if(Object.keys(req.query).includes("cursor")){
+        prev = req.protocol + "://" + req.get("host") + "/posts" + "?cursor=" + req.query.cursor;
+        q = q.start(req.query.cursor);
+    }
+    return datastore.runQuery(q).then( (entities) => {
+        results.posts = entities[0].map(fromDatastore);
+        // if(typeof prev !== 'undefined'){
+        //     results.previous = prev;
+        // }
+        if(entities[1].moreResults !== Datastore.NO_MORE_RESULTS ){
+            results.next = req.protocol + "://" + req.get("host") + "/posts" + "?cursor=" + entities[1].endCursor;
+        }
+        return results;
     });
+
+    // return datastore.runQuery(q).then((entities) => {
+    //     // Use Array.map to call the function fromDatastore. This function
+    //     // adds id attribute to every element in the array at element 0 of
+    //     // the variable entities
+    //     return entities[0].map(fromDatastore);
+    // });
 }
 
 /*
@@ -382,7 +400,7 @@ router.get('/posts/:post_id', function(req,res){
 Get all post entities from Datastore
 */
 router.get('/posts', function(req,res){
-    getPosts().then(posts => {
+    getPosts(req).then(posts => {
         res.status(200).json(posts);
     })
 })
