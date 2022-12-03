@@ -10,6 +10,8 @@ const router = express.Router();
 // create a consts to store the entity names
 const USERS = "Users";
 const POSTS = "Posts";
+const COMMENTS = "Comments";
+
 
 app.use(bodyParser.json());
 app.enable('trust proxy');
@@ -160,6 +162,26 @@ function deletePost(postID) {
 }
 
 
+/* -------------Comments Model Functions ------------- */
+
+/*
+Function takes three post attributes and creates a new entity
+in Google Datastore using the provided attributes.
+
+Params: content: the post content.
+        creationDate: the date the post was created.
+        public: true if post is public, false if private.
+
+Returns: The function returns the key to the created entity.
+*/
+function createComment(content, creationDate, upvote) {
+    let key = datastore.key(COMMENTS);
+    const newComment = { "content": content, "creationDate": creationDate, "upvote": upvote};
+    return datastore.save({ "key": key, "data": newComment }).then(() => { return key });
+}
+
+
+
 
 /* -------------Home Page Controller Functions ------------- */
 
@@ -235,21 +257,21 @@ router.get('/users', function(req,res){
 /* -------------Posts Controller Functions ------------- */
 
 /*
-Create a new postr entity
+Create a new post entity
 */
 router.post('/posts', function (req,res){
-    // check if all the required user attributes are provided
+    // check if all the required post attributes are provided
     if(!("content" in req.body) || !("creationDate" in req.body) || !("public" in req.body)){
         // send back an error if an attribute is missing
         res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
     } else {
-        // get the firstName, lastName, and userName from the request body
+        // get the content, creationDate, and public status from the request body
         const content = req.body.content;
         const creationDate = req.body.creationDate;
         const public = req.body.public;
         // create a new post in Datastore
         createPost(content, creationDate, public).then((key) => {
-            // create a self link that points to the new user using the post information
+            // create a self link that points to the new post using the post information
             const self = req.protocol + "://" + req.get("host") + "/posts/" + key.id;  
             // send a successful response and a JSON object that contains the post information
             res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "self": self});
@@ -407,6 +429,33 @@ router.patch('/posts/:post_id', function (req, res) {
         }
     })
 });
+
+
+/* -------------Comments Controller Functions ------------- */
+
+/*
+Create a new comment
+*/
+router.post('/comments', function (req,res){
+    // check if all the required comment attributes are provided
+    if(!("content" in req.body) || !("creationDate" in req.body) || !("upvote" in req.body)){
+        // send back an error if an attribute is missing
+        res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
+    } else {
+        // get the content, creationDate, and upvote from the request body
+        const content = req.body.content;
+        const creationDate = req.body.creationDate;
+        const upvote = req.body.upvote;
+        // create a new comment in Datastore
+        createComment(content, creationDate, upvote).then((key) => {
+            // create a self link that points to the new comment using the post information
+            const self = req.protocol + "://" + req.get("host") + "/comments/" + key.id;  
+            // send a successful response and a JSON object that contains the comment information
+            res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "upvote": upvote, "self": self});
+        })
+    }
+});
+
 
 /* -------------Start Server ------------- */
 
