@@ -204,6 +204,23 @@ function getComment(commentID) {
 }
 
 
+/*
+Function queries Datastore and returns all comments.
+Params:None
+
+Returns: All comment entities in Datastore
+*/
+function getComments() {
+    const q = datastore.createQuery(COMMENTS);
+    return datastore.runQuery(q).then((entities) => {
+        // Use Array.map to call the function fromDatastore. This function
+        // adds id attribute to every element in the array at element 0 of
+        // the variable entities
+        return entities[0].map(fromDatastore);
+    });
+}
+
+
 /* -------------Home Page Controller Functions ------------- */
 
 
@@ -504,6 +521,20 @@ router.get('/comments/:comment_id', function(req,res){
         }
     })
 });
+
+
+
+/*
+Get all comment entities from Datastore
+*/
+router.get('/comments', function(req,res){
+    getComments().then(comments => {
+        res.status(200).json(comments);
+    })
+})
+
+
+
 /* -------------Start Server ------------- */
 
 
