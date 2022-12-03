@@ -235,13 +235,33 @@ Params:None
 
 Returns: All comment entities in Datastore
 */
-function getComments() {
-    const q = datastore.createQuery(COMMENTS);
-    return datastore.runQuery(q).then((entities) => {
-        // Use Array.map to call the function fromDatastore. This function
-        // adds id attribute to every element in the array at element 0 of
-        // the variable entities
-        return entities[0].map(fromDatastore);
+function getComments(req) {
+    // run a query on Datastore to get all posts
+    const query = datastore.createQuery(COMMENTS);
+    return datastore.runQuery(query).then((entities) => {
+        // get total number of posts in Datastore
+        const totalItems = entities[0].length;
+        
+        // run another query for posts, but limit results this time
+        let q = datastore.createQuery(COMMENTS).limit(5);
+        let results = {};
+        let prev;
+
+        if(Object.keys(req.query).includes("cursor")){
+            prev = req.protocol + "://" + req.get("host") + "/comments" + "?cursor=" + req.query.cursor;
+            q = q.start(req.query.cursor);
+        }
+        return datastore.runQuery(q).then( (entities) => {
+            results.comments = entities[0].map(fromDatastore);
+            // if(typeof prev !== 'undefined'){
+            //     results.previous = prev;
+            // }
+            if(entities[1].moreResults !== Datastore.NO_MORE_RESULTS ){
+                results.next = req.protocol + "://" + req.get("host") + "/comments" + "?cursor=" + entities[1].endCursor;
+                results.total_items = totalItems;
+            }
+            return results;
+        });
     });
 }
 
@@ -584,7 +604,7 @@ router.get('/comments/:comment_id', function(req,res){
 Get all comment entities from Datastore
 */
 router.get('/comments', function(req,res){
-    getComments().then(comments => {
+    getComments(req).then(comments => {
         res.status(200).json(comments);
     })
 })
