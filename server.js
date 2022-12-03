@@ -165,12 +165,12 @@ function deletePost(postID) {
 /* -------------Comments Model Functions ------------- */
 
 /*
-Function takes three post attributes and creates a new entity
+Function takes three comment attributes and creates a new entity
 in Google Datastore using the provided attributes.
 
-Params: content: the post content.
-        creationDate: the date the post was created.
-        public: true if post is public, false if private.
+Params: content: the comment content.
+        creationDate: the date the comment was created.
+        upvote: true if comment is upvoting the post, false if not.
 
 Returns: The function returns the key to the created entity.
 */
@@ -181,6 +181,27 @@ function createComment(content, creationDate, upvote) {
 }
 
 
+/*
+Function takes a commendID and fetches a comment entity
+from Google Datastore using the provided ID.
+
+Params: commentID: the comment's ID
+
+Returns: The function returns the comment entity with the provided ID.
+*/
+function getComment(commentID) {
+    // get key from Datastore using the provided userID
+    const key = datastore.key([COMMENTS, parseInt(commentID, 10)]);
+    return datastore.get(key).then((entity) => {
+        if (entity[0] === undefined || entity[0] === null) {
+            // if no entity is found, the user doesn't exist
+            return entity;
+        } else {
+            // if an entity is found, return the user
+            return entity.map(fromDatastore);
+        }
+    });
+}
 
 
 /* -------------Home Page Controller Functions ------------- */
@@ -457,6 +478,32 @@ router.post('/comments', function (req,res){
 });
 
 
+
+/*
+Get a comment from Datastore using a commentID
+*/
+router.get('/comments/:comment_id', function(req,res){
+    // get the commentID from the path parameters
+    const commentID = req.params.comment_id;
+
+    // call a function to get the comment from Datastore, then return the comment if exists
+    getComment(commentID).then(entity => {
+        // get the comment object
+        const comment = entity[0]; 
+        if (comment === undefined || comment === null) {
+            res.status(404).json({'Error': 'No comment with commentID exists.'});
+        } else {
+            // construct a self link
+            const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
+
+            // add the self attribute to the user object
+            comment['self'] = self;
+
+            // return the post object
+            res.status(200).json(comment);
+        }
+    })
+});
 /* -------------Start Server ------------- */
 
 
