@@ -221,6 +221,20 @@ function getComments() {
 }
 
 
+/*
+Function deletes a comment from Datastore that corresponds 
+with the provided commentID
+Params:commentID: the ID of the comment to be deleted.
+
+Returns: None
+*/
+function deleteComment(commentID) {
+    const key = datastore.key([COMMENTS, parseInt(commentID, 10)]);
+    return datastore.delete(key);
+}
+
+
+
 /* -------------Home Page Controller Functions ------------- */
 
 
@@ -534,6 +548,29 @@ router.get('/comments', function(req,res){
 })
 
 
+/*
+Delete a comment from Datastore using a commentID
+*/
+
+router.delete('/comments/:comment_id', function (req, res) {
+
+    // get the post ID
+    const commentID = req.params.comment_id;
+
+    // check if there's a post with this ID
+    getComment(commentID)
+        .then(entity => {
+            const comment = entity[0];
+            // check if the returned result is empty, meaning there's not comment with this commentID
+            if (comment === undefined || comment === null) {
+                // The 0th element is undefined. This means there is no comment with this id
+                res.status(404).json({ 'Error': 'No comment with this commentID exists' });
+            } else {       
+                    // delete the post and return status 204 with no content
+                    deleteComment(commentID).then(res.status(204).end());
+            }
+        });
+});
 
 /* -------------Start Server ------------- */
 
