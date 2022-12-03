@@ -74,24 +74,6 @@ function getUsers() {
 }
 
 
-/*
-Function that takes new post attributes and replaces an existing post
-with the provided attributes
-
-Params: id: the existing post ID
-        content: the updated content
-        creationDate: the updated creation date, or editing date
-        public: the new public status (true or false)
-
-Returns: None
-*/
-function editPost(id, content, creationDate, public) {
-    const key = datastore.key([POSTS, parseInt(id, 10)]);
-    const post = { "content": content, "creationDate": creationDate, "public": public };
-    return datastore.save({ "key": key, "data": post });
-}
-
-
 /* -------------Posts Model Functions ------------- */
 
 /*
@@ -160,6 +142,27 @@ function deletePost(postID) {
     const key = datastore.key([POSTS, parseInt(postID, 10)]);
     return datastore.delete(key);
 }
+
+
+/*
+Function that takes new post attributes and replaces an existing post
+with the provided attributes
+
+Params: id: the existing post ID
+        content: the updated content
+        creationDate: the updated creation date, or editing date
+        public: the new public status (true or false)
+
+Returns: None
+*/
+function editPost(id, content, creationDate, public) {
+    const key = datastore.key([POSTS, parseInt(id, 10)]);
+    const post = { "content": content, "creationDate": creationDate, "public": public };
+    return datastore.save({ "key": key, "data": post });
+}
+
+
+
 
 
 /* -------------Comments Model Functions ------------- */
@@ -233,6 +236,23 @@ function deleteComment(commentID) {
     return datastore.delete(key);
 }
 
+
+/*
+Function that takes new comment attributes and replaces an existing comment
+with the provided attributes
+
+Params: id: the existing comment ID
+        content: the updated content
+        creationDate: the updated creation date, or editing date
+        upvote: the new public upvote (true or false)
+
+Returns: None
+*/
+function editComment(id, content, creationDate, upvote) {
+    const key = datastore.key([COMMENTS, parseInt(id, 10)]);
+    const comment = { "content": content, "creationDate": creationDate, "upvote": upvote };
+    return datastore.save({ "key": key, "data": comment });
+}
 
 
 /* -------------Home Page Controller Functions ------------- */
@@ -570,6 +590,49 @@ router.delete('/comments/:comment_id', function (req, res) {
                     deleteComment(commentID).then(res.status(204).end());
             }
         });
+});
+
+
+/*
+Edit a comment
+*/
+
+router.put('/comments/:comment_id', function (req, res) {
+    // check if one of the required attributes is missing
+    if (!("content" in req.body) || !("creationDate" in req.body) || !("upvote" in req.body)){
+        res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
+    } else {
+        // get the commentID form the request path parameters
+        const commentID = req.params.comment_id;
+
+        // check if the comment to be edited actually exists
+        getComment(commentID).then(comment => {
+            if (comment[0] === undefined || comment[0] === null) {
+
+                // The 0th element is undefined. This means there is no comment with this id
+                res.status(404).json({ 'Error': 'No post with this post_id exists' });
+
+            } else {
+                // get the new post attributes
+                const content = req.body.content;
+                const creationDate = req.body.creationDate;
+                const upvote = req.body.upvote;
+
+                // edit the commment in Datastore
+                editComment(commentID, content, creationDate, upvote).then(key => {
+                    
+                    // create the self link that points to the new comment object
+                    const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
+
+                    // form the new comment object
+                    const newComment = {"id": commentID, "content": content, "creationDate": creationDate, "upvote": upvote, "self": self};
+
+                    // return a success and the newly edited comment object
+                    res.status(200).json(newComment);
+                })
+            }
+        })
+    }
 });
 
 /* -------------Start Server ------------- */
