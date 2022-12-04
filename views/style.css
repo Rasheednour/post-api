@@ -27,11 +27,17 @@ a:hover, a:active {
 ul {
     background: #ff9999;
     padding: 20px;
+    display: flex;
+    flex-direction: column;
   }
 
 ul li {
+  width: 100%;
     text-align: left;
     background: #ffe5e5;
     color: rgb(33, 33, 33);
     margin: 5px;
+    overflow-wrap: break-word;
   }
+
+  

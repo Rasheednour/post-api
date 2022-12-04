@@ -5,13 +5,47 @@ const bodyParser = require('body-parser');
 const { entity } = require('@google-cloud/datastore/build/src/entity');
 const datastore = new Datastore();
 const path = require('path');
+const {google} = require('googleapis');
+const url = require('url');
+const jwt_decode = require('jwt-decode');
+const {expressjwt: jwt} = require('express-jwt');
+const jwksRsa = require('jwks-rsa');
 
 const router = express.Router();
-
 // create a consts to store the entity names
 const USERS = "Users";
 const POSTS = "Posts";
 const COMMENTS = "Comments";
+
+const CLIENT_ID = '1049983258452-vgak6vsasjmuagjj49lrt3tab5nbs08e.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
+const REDIRECT_URI = 'http://localhost:8080/oauth';
+
+// create a new oauth2Client
+const oauth2Client = new google.auth.OAuth2(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    REDIRECT_URI
+  );
+  
+// Access scopes
+const scopes = [
+    'https://www.googleapis.com/auth/userinfo.profile'
+  ];
+
+// create a function to verify JWTs
+const checkJwt = jwt({
+    secret: jwksRsa.expressJwtSecret({
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+      jwksUri: `https://www.googleapis.com/oauth2/v3/certs`
+    }),
+  
+    // Validate the audience and the issuer.
+    issuer: `https://accounts.google.com`,
+    algorithms: ['RS256']
+  });
 
 
 app.use(bodyParser.json());
@@ -25,6 +59,30 @@ function fromDatastore(item) {
 }
 
 
+/* -------------Google OAuth Model Functions ------------- */
+
+/*
+A function that constructs an endpoint to the Google Oauth 2.0
+returns: the authorization URL
+*/
+function obtainAuthUrl() {
+      
+      // Generate a url that asks permissions for the Drive activity scope
+      const authorizationUrl = oauth2Client.generateAuthUrl({
+        // 'online' (default) or 'offline' (gets refresh_token)
+        access_type: 'online',
+        /** Pass in the scopes array defined above.
+          * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
+        scope: scopes,
+        // Enable incremental authorization. Recommended as a best practice.
+        include_granted_scopes: true
+      });
+
+      return authorizationUrl;
+}
+
+
+
 /* -------------Users Model Functions ------------- */
 
 
@@ -34,9 +92,9 @@ in Google Datastore using the provideed attributes.
 
 Returns: The function returns the key to the created entity.
 */
-function createUser(firstName, lastName, userName) {
+function createUser(name, userID) {
     let key = datastore.key(USERS);
-    const newUser = { "firstName": firstName, "lastName": lastName, "userName": userName};
+    const newUser = { "name": name, "userID": userID };
     return datastore.save({ "key": key, "data": newUser }).then(() => { return key });
 }
 
@@ -310,30 +368,6 @@ router.get('/', function (req, res) {
 /* -------------Users Controller Functions ------------- */
 
 /*
-Create a new user entity
-*/
-router.post('/users', function (req,res){
-    // check if all the required user attributes are provided
-    if(!("firstName" in req.body) || !("lastName" in req.body) || !("userName" in req.body)){
-        // send back an error if an attribute is missing
-        res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
-    } else {
-        // get the firstName, lastName, and userName from the request body
-        const firstName = req.body.firstName;
-        const lastName = req.body.lastName;
-        const userName = req.body.userName;
-        // create a new user in Datastore
-        createUser(firstName, lastName, userName).then((key) => {
-            // create a self link that points to the new user using the user information
-            const self = req.protocol + "://" + req.get("host") + "/users/" + key.id;  
-            // send a successful response and a JSON object that contains the user information
-            res.status(201).json({"id": key.id, "firstName": firstName, "lastName": lastName, "userName": userName, "self": self});
-        })
-    }
-});
-
-
-/*
 Get a user from Datastore using a userID
 */
 router.get('/users/:user_id', function(req,res){
@@ -360,6 +394,7 @@ router.get('/users/:user_id', function(req,res){
 });
 
 
+
 /*
 Get all user entities from Datastore
 */
@@ -367,7 +402,70 @@ router.get('/users', function(req,res){
     getUsers().then(users => {
         res.status(200).json(users);
     })
-})
+});
+
+
+/*
+Redirect route from home page to the Google OAuth 2.0 endpoint
+*/
+router.get('/auth', function(req,res){
+    // construct Google Oauth endpoint
+    const authUrl = obtainAuthUrl();
+    res.redirect(authUrl);
+});
+
+
+/*
+Redirect route from home page to the Google OAuth 2.0 endpoint
+*/
+router.get('/oauth', function(req,res){
+    // Receive the callback from Google's OAuth 2.0 server.
+    if (req.url.startsWith('/oauth')) {
+        // Handle the OAuth 2.0 server response
+        let q = url.parse(req.url, true).query;
+    
+        // Get access token
+        oauth2Client.getToken(q.code).then(tokens => {
+            oauth2Client.setCredentials(tokens);
+            // get the JWT 
+            const jwt = tokens.tokens.id_token;
+            // decode the JWT
+            const decodedJwt = jwt_decode(jwt);
+            // obtain the value of sub and the name from the decoded JWT
+            const userID = decodedJwt.sub;
+            const name = decodedJwt.name;
+
+            // before creating a new user, check if the user is already registered
+            // get list of users
+            getUsers().then(users => {
+                // create variable to keep track of user status
+                let userExists = false;
+                // iterate through list of users
+                for (let i=0; i < users.length; i++) {
+                    const user = users[i];
+                    const id = user.userID;
+                    if (id === userID) {
+                        userExists = true;
+                        break;
+                    }
+                }
+                // if the user doesn't exist in Datastore, create new user
+                if (!userExists) {
+                    // create a new user in Datastore with the above attributes
+                    createUser(name, userID).then(user => {
+                    // redirect to the user page and 
+                    res.render('user-page', {"userID": userID, "jwt": jwt});
+                     });
+                // if user already exists, don't create new user, and redirect to user page
+                } else {
+                    res.render('user-page', {"userID": userID, "jwt": jwt});
+                }
+            })
+            
+            
+        });
+    }
+});
 
 
 /* -------------Posts Controller Functions ------------- */
