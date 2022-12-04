@@ -99,26 +99,6 @@ function createUser(name, userID) {
 }
 
 /*
-Params: Function takes a userID and fetches a user entity
-from Google Datastore using the provided ID.
-
-Returns: The function returns the user entity.
-*/
-function getUser(userID) {
-    // get key from Datastore using the provided userID
-    const key = datastore.key([USERS, parseInt(userID, 10)]);
-    return datastore.get(key).then((entity) => {
-        if (entity[0] === undefined || entity[0] === null) {
-            // if no entity is found, the user doesn't exist
-            return entity;
-        } else {
-            // if an entity is found, return the user
-            return entity.map(fromDatastore);
-        }
-    });
-}
-
-/*
 Params:None
 
 Returns: All user entities in Datastore
