@@ -146,9 +146,9 @@ Params: content: the post content.
 
 Returns: The function returns the key to the created entity.
 */
-function createPost(content, creationDate, public) {
+function createPost(content, creationDate, public, userID) {
     let key = datastore.key(POSTS);
-    const newPost = { "content": content, "creationDate": creationDate, "public": public};
+    const newPost = { "content": content, "creationDate": creationDate, "public": public, "comments": [], "upvotes": 0, "userID": userID};
     return datastore.save({ "key": key, "data": newPost }).then(() => { return key });
 }
 
@@ -462,12 +462,16 @@ router.post('/posts', checkJwt, function (req,res){
             const content = req.body.content;
             const creationDate = req.body.creationDate;
             const public = req.body.public;
+
+            // get the unique user ID which is the value of sub in the JWT
+            const userID = req.auth.sub;
+    
             // create a new post in Datastore
-            createPost(content, creationDate, public).then((key) => {
+            createPost(content, creationDate, public, userID).then((key) => {
                 // create a self link that points to the new post using the post information
                 const self = req.protocol + "://" + req.get("host") + "/posts/" + key.id;  
                 // send a successful response and a JSON object that contains the post information
-                res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "self": self});
+                res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "comments": [], "upvotes": 0, "userID": userID, "self": self});
             });
         }
     }
