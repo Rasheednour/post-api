@@ -367,33 +367,6 @@ router.get('/', function (req, res) {
 
 /* -------------Users Controller Functions ------------- */
 
-/*
-Get a user from Datastore using a userID
-*/
-router.get('/users/:user_id', function(req,res){
-    // get the userID from the path parameters
-    const userID = req.params.user_id
-
-    // call a function to get the user from Datastore, then return the user if exists
-    getUser(userID).then(entity => {
-        // get the user object
-        const user = entity[0]; 
-        if (user === undefined || user === null) {
-            res.status(404).json({'Error': 'No user with userID exists.'});
-        } else {
-            // construct a self link
-            const self = req.protocol + "://" + req.get("host") + "/users/" + userID;
-
-            // add the self attribute to the user object
-            user['self'] = self;
-
-            // return the user object
-            res.status(200).json(user);
-        }
-    })
-});
-
-
 
 /*
 Get all user entities from Datastore
@@ -473,7 +446,7 @@ router.get('/oauth', function(req,res){
 /*
 Create a new post entity
 */
-router.post('/posts', function (req,res){
+router.post('/posts', checkJwt, function (req,res){
     // check if all the required post attributes are provided
     if(!("content" in req.body) || !("creationDate" in req.body) || !("public" in req.body)){
         // send back an error if an attribute is missing
@@ -552,6 +525,16 @@ router.delete('/posts/:post_id', function (req, res) {
                     deletePost(postID).then(res.status(204).end());
             }
         });
+});
+
+/*
+Deleting the list of posts is not allowed
+*/
+
+router.delete('/posts', function (req, res) {
+
+    // get the post ID
+    res.status(405).json({"Error": "Deleting the list of posts is not allowed."})
 });
 
 
