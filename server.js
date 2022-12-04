@@ -452,17 +452,24 @@ router.post('/posts', checkJwt, function (req,res){
         // send back an error if an attribute is missing
         res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
     } else {
-        // get the content, creationDate, and public status from the request body
-        const content = req.body.content;
-        const creationDate = req.body.creationDate;
-        const public = req.body.public;
-        // create a new post in Datastore
-        createPost(content, creationDate, public).then((key) => {
-            // create a self link that points to the new post using the post information
-            const self = req.protocol + "://" + req.get("host") + "/posts/" + key.id;  
-            // send a successful response and a JSON object that contains the post information
-            res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "self": self});
-        })
+        // check if the request Accept header is set to application/json
+        const accepts = req.accepts('application/json');
+        if(!accepts){
+            res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+        } else {
+            // the request is authenticated and valid, proceed with creating the post
+            // get the content, creationDate, and public status from the request body
+            const content = req.body.content;
+            const creationDate = req.body.creationDate;
+            const public = req.body.public;
+            // create a new post in Datastore
+            createPost(content, creationDate, public).then((key) => {
+                // create a self link that points to the new post using the post information
+                const self = req.protocol + "://" + req.get("host") + "/posts/" + key.id;  
+                // send a successful response and a JSON object that contains the post information
+                res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "public": public, "self": self});
+            });
+        }
     }
 });
 
