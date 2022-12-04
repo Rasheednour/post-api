@@ -87,7 +87,7 @@ function obtainAuthUrl() {
 
 
 /*
-Params: Function takes three user attributes and creates a new entity
+Params: Function takes two user attributes and creates a new entity
 in Google Datastore using the provideed attributes.
 
 Returns: The function returns the key to the created entity.
@@ -106,10 +106,7 @@ Returns: All user entities in Datastore
 function getUsers() {
     const q = datastore.createQuery(USERS);
     return datastore.runQuery(q).then((entities) => {
-        // Use Array.map to call the function fromDatastore. This function
-        // adds id attribute to every element in the array at element 0 of
-        // the variable entities
-        return entities[0].map(fromDatastore);
+        return entities[0]
     });
 }
 
