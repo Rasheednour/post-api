@@ -4,6 +4,7 @@ const { Datastore } = require('@google-cloud/datastore');
 const bodyParser = require('body-parser');
 const { entity } = require('@google-cloud/datastore/build/src/entity');
 const datastore = new Datastore();
+const path = require('path');
 
 const router = express.Router();
 
@@ -15,7 +16,8 @@ const COMMENTS = "Comments";
 
 app.use(bodyParser.json());
 app.enable('trust proxy');
-
+app.set('view engine', 'pug');
+app.use(express.static(path.join(__dirname, './views')));
 
 function fromDatastore(item) {
     item.id = item[Datastore.KEY].id;
@@ -301,7 +303,7 @@ function editComment(id, content, creationDate, upvote) {
 
 
 router.get('/', function (req, res) {
-    res.send("Welcome to Posts-API");
+    res.render('home-page');
  });
 
 
