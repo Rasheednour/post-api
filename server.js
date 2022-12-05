@@ -498,7 +498,7 @@ router.get('/posts/:post_id', checkJwt, function(req,res){
                         res.status(200).json(post);
                     } else {
                         // the post is private and the requesting user is not the owner, reject the request
-                        res.status(403).json("Error": "You are not allowed to access this private resource");
+                        res.status(403).json({"Error": "You are not allowed to access this private resource"});
                     }
                 }
             }
