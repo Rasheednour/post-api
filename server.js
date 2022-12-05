@@ -276,17 +276,17 @@ Params:None
 Returns: All comment entities in Datastore
 */
 function getComments(req) {
+    // get the unique userID of the user requesting to see their posts
+    const userID = req.auth.sub;
     // run a query on Datastore to get all posts
-    const query = datastore.createQuery(COMMENTS);
+    const query = datastore.createQuery(COMMENTS).filter('userID', '=', userID);
     return datastore.runQuery(query).then((entities) => {
-        // get total number of posts in Datastore
+        // get total number of user posts for this user
         const totalItems = entities[0].length;
-        
         // run another query for posts, but limit results this time
-        let q = datastore.createQuery(COMMENTS).limit(5);
+        let q = datastore.createQuery(COMMENTS).filter('userID', '=', userID).limit(5);
         let results = {};
         let prev;
-
         if(Object.keys(req.query).includes("cursor")){
             prev = req.protocol + "://" + req.get("host") + "/comments" + "?cursor=" + req.query.cursor;
             q = q.start(req.query.cursor);
@@ -330,9 +330,9 @@ Params: id: the existing comment ID
 
 Returns: None
 */
-function editComment(id, content, creationDate, upvote) {
+function editComment(id, content, creationDate, upvote, userID, postID) {
     const key = datastore.key([COMMENTS, parseInt(id, 10)]);
-    const comment = { "content": content, "creationDate": creationDate, "upvote": upvote };
+    const comment = { "content": content, "creationDate": creationDate, "upvote": upvote, "userID": userID, "postID": postID };
     return datastore.save({ "key": key, "data": comment });
 }
 
@@ -742,8 +742,7 @@ router.get('/comments/:comment_id', checkJwt, function(req,res){
 
                 // return the post object
                 res.status(200).json(comment);
-            }
-            
+            }  
         }
     });
 });
@@ -753,11 +752,17 @@ router.get('/comments/:comment_id', checkJwt, function(req,res){
 /*
 Get all comment entities from Datastore
 */
-router.get('/comments', function(req,res){
-    getComments(req).then(comments => {
-        res.status(200).json(comments);
-    })
-})
+router.get('/comments', checkJwt, function(req,res){
+    // check if request accepts application/json
+    const accepts = req.accepts('application/json');
+    if(!accepts){
+        res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+    } else {
+        getComments(req).then(comments => {
+            res.status(200).json(comments);
+        })
+    }
+});
 
 
 /*
@@ -789,7 +794,7 @@ router.delete('/comments/:comment_id', function (req, res) {
 Edit a comment
 */
 
-router.put('/comments/:comment_id', function (req, res) {
+router.put('/comments/:comment_id', checkJwt, function (req, res) {
     // check if one of the required attributes is missing
     if (!("content" in req.body) || !("creationDate" in req.body) || !("upvote" in req.body)){
         res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
@@ -802,26 +807,40 @@ router.put('/comments/:comment_id', function (req, res) {
             if (comment[0] === undefined || comment[0] === null) {
 
                 // The 0th element is undefined. This means there is no comment with this id
-                res.status(404).json({ 'Error': 'No post with this post_id exists' });
+                res.status(404).json({ 'Error': 'No comment with this comment_id exists' });
 
             } else {
-                // get the new post attributes
-                const content = req.body.content;
-                const creationDate = req.body.creationDate;
-                const upvote = req.body.upvote;
+                // check if the requesting user is editing a comment that is not owned by them
+                const requestUserID = req.auth.sub;
+                const userID = comment[0].userID;
+                if (requestUserID !== userID) {
+                    res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+                } else {
+                    // check if the request Accept header is set to application/json
+                    const accepts = req.accepts('application/json');
+                    if(!accepts){
+                        res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+                    } else {
+                         // get the new comment attributes
+                        const content = req.body.content;
+                        const creationDate = req.body.creationDate;
+                        const upvote = req.body.upvote;
 
-                // edit the commment in Datastore
-                editComment(commentID, content, creationDate, upvote).then(key => {
-                    
-                    // create the self link that points to the new comment object
-                    const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
+                        // edit the comment in Datastore
+                        editComment(commentID, content, creationDate, upvote, comment[0].userID, comment[0].postID).then(key => {
+                        
+                            // create the self link that points to the new comment object
+                            const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
 
-                    // form the new comment object
-                    const newComment = {"id": commentID, "content": content, "creationDate": creationDate, "upvote": upvote, "self": self};
+                            // form the new comment object
+                            const newComment = {"id": commentID, "content": content, "creationDate": creationDate, "upvote": upvote, "userID": comment[0].userID, "postID":comment[0].postID, "self": self};
 
-                    // return a success and the newly edited comment object
-                    res.status(200).json(newComment);
-                })
+                            // return a success and the newly edited comment object
+                            res.status(200).json(newComment);
+                        });
+                    }
+                   
+                }   
             }
         })
     }
@@ -873,6 +892,11 @@ router.patch('/comments/:comment_id', function (req, res) {
             })
         }
     })
+});
+
+
+router.put('/posts/:post_id/comments/:comment_id', function (req, res) {
+    console.log('pass');
 });
 
 /* -------------Start Server ------------- */
