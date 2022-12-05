@@ -241,7 +241,7 @@ Returns: The function returns the key to the created entity.
 */
 function createComment(content, creationDate, upvote, userID) {
     let key = datastore.key(COMMENTS);
-    const newComment = { "content": content, "creationDate": creationDate, "upvote": upvote, "userID":userID, "postID": null};
+    const newComment = { "content": content, "creationDate": creationDate, "upvote": upvote, "userID":userID};
     return datastore.save({ "key": key, "data": newComment }).then(() => { return key });
 }
 
@@ -330,9 +330,9 @@ Params: id: the existing comment ID
 
 Returns: None
 */
-function editComment(id, content, creationDate, upvote, userID, postID) {
+function editComment(id, content, creationDate, upvote, userID) {
     const key = datastore.key([COMMENTS, parseInt(id, 10)]);
-    const comment = { "content": content, "creationDate": creationDate, "upvote": upvote, "userID": userID, "postID": postID };
+    const comment = { "content": content, "creationDate": creationDate, "upvote": upvote, "userID": userID };
     return datastore.save({ "key": key, "data": comment });
 }
 
@@ -529,7 +529,7 @@ router.get('/posts', checkJwt, function(req,res){
 Delete a post from Datastore using a postID
 */
 
-router.delete('/posts/:post_id', function (req, res) {
+router.delete('/posts/:post_id', checkJwt, function (req, res) {
 
     // get the post ID
     const postID = req.params.post_id;
@@ -543,8 +543,14 @@ router.delete('/posts/:post_id', function (req, res) {
                 // The 0th element is undefined. This means there is no post with this id
                 res.status(404).json({ 'Error': 'No post with this postID exists' });
             } else {       
-                    // delete the post and return status 204 with no content
-                    deletePost(postID).then(res.status(204).end());
+                    // check if the requester is the owner of the post
+                    if (post.userID !== req.auth.sub) {
+                        res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+                    } else {
+                        // delete the post and return status 204 with no content
+                        deletePost(postID).then(res.status(204).end());
+                    }
+                    
             }
         });
 });
@@ -707,7 +713,7 @@ router.post('/comments', checkJwt, function (req,res){
                 // create a self link that points to the new post using the post information
                 const self = req.protocol + "://" + req.get("host") + "/comments/" + key.id;  
                 // send a successful response and a JSON object that contains the post information
-                res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "upvote": upvote, "postID": null, "userID": userID, "self": self});
+                res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "upvote": upvote, "userID": userID, "self": self});
             });
         }
     }
@@ -769,22 +775,27 @@ router.get('/comments', checkJwt, function(req,res){
 Delete a comment from Datastore using a commentID
 */
 
-router.delete('/comments/:comment_id', function (req, res) {
+router.delete('/comments/:comment_id', checkJwt, function (req, res) {
 
-    // get the post ID
+    // get the comment ID
     const commentID = req.params.comment_id;
 
-    // check if there's a post with this ID
+    // check if there's a comment with this ID
     getComment(commentID)
         .then(entity => {
             const comment = entity[0];
-            // check if the returned result is empty, meaning there's not comment with this commentID
+            // check if the returned result is empty, meaning there's not comemnt with this commentID
             if (comment === undefined || comment === null) {
                 // The 0th element is undefined. This means there is no comment with this id
                 res.status(404).json({ 'Error': 'No comment with this commentID exists' });
             } else {       
-                    // delete the post and return status 204 with no content
+                // check if the requester is the owner of the comment
+                if (comment.userID !== req.auth.sub) {
+                    res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+                } else {
+                    // delete the comment and return status 204 with no content
                     deleteComment(commentID).then(res.status(204).end());
+                }
             }
         });
 });
@@ -827,13 +838,13 @@ router.put('/comments/:comment_id', checkJwt, function (req, res) {
                         const upvote = req.body.upvote;
 
                         // edit the comment in Datastore
-                        editComment(commentID, content, creationDate, upvote, comment[0].userID, comment[0].postID).then(key => {
+                        editComment(commentID, content, creationDate, upvote, comment[0].userID).then(key => {
                         
                             // create the self link that points to the new comment object
                             const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
 
                             // form the new comment object
-                            const newComment = {"id": commentID, "content": content, "creationDate": creationDate, "upvote": upvote, "userID": comment[0].userID, "postID":comment[0].postID, "self": self};
+                            const newComment = {"id": commentID, "content": content, "creationDate": creationDate, "upvote": upvote, "userID": comment[0].userID, "self": self};
 
                             // return a success and the newly edited comment object
                             res.status(200).json(newComment);
@@ -891,7 +902,7 @@ router.patch('/comments/:comment_id', checkJwt, function (req, res) {
                     }
 
                     // edit the post 
-                    editComment(commentID, oldComment.content, oldComment.creationDate, oldComment.upvote, oldComment.userID, oldComment.postID).then(key => {
+                    editComment(commentID, oldComment.content, oldComment.creationDate, oldComment.upvote, oldComment.userID).then(key => {
                     // create the self link that points to the new post object
                     const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
 
