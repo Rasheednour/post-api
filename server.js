@@ -631,30 +631,38 @@ router.patch('/posts/:post_id', checkJwt, function (req, res) {
             res.status(404).json({ 'Error': 'No post with this post_id exists' });
 
         } else {
-            // get the old post object
-            const oldPost = post[0];
+            // check if the requesting user is editing a post that is not owned by them
+            const requestUserID = req.auth.sub;
+            const userID = post[0].userID;
+            if (requestUserID !== userID) {
+                res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+            } else {
+                // get the old post object
+                const oldPost = post[0];
 
-            // get the attributes to be updated and update the old post object accordingly
-            if ("content" in attributes) {
-                oldPost["content"] = attributes["content"];
-            }
-            if ("creationDate" in attributes) {
-                oldPost["creationDate"] = attributes["creationDate"];
-            }
-            if ("public" in attributes) {
-                oldPost["public"] = attributes["public"];
-            }
+                // get the attributes to be updated and update the old post object accordingly
+                if ("content" in attributes) {
+                    oldPost["content"] = attributes["content"];
+                }
+                if ("creationDate" in attributes) {
+                    oldPost["creationDate"] = attributes["creationDate"];
+                }
+                if ("public" in attributes) {
+                    oldPost["public"] = attributes["public"];
+                }
 
-            // edit the post 
-            editPost(postID, oldPost.content, oldPost.creationDate, oldPost.public).then(key => {
-               // create the self link that points to the new post object
-               const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+                // edit the post 
+                editPost(postID, oldPost.content, oldPost.creationDate, oldPost.public, oldPost.userID, oldPost.comments, oldPost.upvotes).then(key => {
+                // create the self link that points to the new post object
+                const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
 
-               // add the self link to the updated post object
-               oldPost["self"] = self;
-               // return a success and the newly edited post object
-               res.status(200).json(oldPost);
-            })
+                // add the self link to the updated post object
+                oldPost["self"] = self;
+                // return a success and the newly edited post object
+                res.status(200).json(oldPost);
+            });
+            }
+            
         }
     })
 });
@@ -665,7 +673,7 @@ router.patch('/posts/:post_id', checkJwt, function (req, res) {
 /*
 Create a new comment
 */
-router.post('/comments', function (req,res){
+router.post('/comments', checkJwt, function (req,res){
     // check if all the required comment attributes are provided
     if(!("content" in req.body) || !("creationDate" in req.body) || !("upvote" in req.body)){
         // send back an error if an attribute is missing
