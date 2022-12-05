@@ -458,7 +458,7 @@ router.post('/posts', checkJwt, function (req,res){
 /*
 Get a post from Datastore using a postID
 */
-router.get('/posts/:post_id', function(req,res){
+router.get('/posts/:post_id', checkJwt, function(req,res){
     // get the postID from the path parameters
     const postID = req.params.post_id
 
@@ -467,7 +467,7 @@ router.get('/posts/:post_id', function(req,res){
         // get the user object
         const post = entity[0]; 
         if (post === undefined || post === null) {
-            res.status(404).json({'Error': 'No post with postID exists.'});
+            res.status(404).json({'Error': 'No post with post_id exists.'});
         } else {
             // construct a self link
             const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
@@ -800,6 +800,14 @@ router.patch('/comments/:comment_id', function (req, res) {
 
 
 app.use('/', router);
+
+
+// catch error thrown by unauthorized requests to the API
+app.use(function (err, req, res, next) {
+    if (err) {
+        res.status(401).json({ 'Error': 'missing/invalid JWT' });
+    }
+   });
 
 // Listen to the App Engine-specified port, or 8080 otherwise
 const PORT = process.env.PORT || 8080;
