@@ -469,14 +469,42 @@ router.get('/posts/:post_id', checkJwt, function(req,res){
         if (post === undefined || post === null) {
             res.status(404).json({'Error': 'No post with post_id exists.'});
         } else {
-            // construct a self link
-            const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+            // check if a valid accept header exists in the request
+            const accepts = req.accepts('application/json');
+            if(!accepts){
+            res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+            } else {
+                // check if the post is public or private
+                // if the post is public, show the post, if private, check if the requesting user is the owner of the post
+                if (post.public) {
+                    // construct a self link
+                    const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
 
-            // add the self attribute to the user object
-            post['self'] = self;
+                    // add the self attribute to the user object
+                    post['self'] = self;
 
-            // return the post object
-            res.status(200).json(post);
+                    // return the post object
+                    res.status(200).json(post);
+                } else {
+                    // check if the requesting user is the owner of the post
+                    if (req.auth.sub === post.userID) {
+                        // construct a self link
+                        const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+
+                        // add the self attribute to the user object
+                        post['self'] = self;
+
+                        // return the post object
+                        res.status(200).json(post);
+                    } else {
+                        // the post is private and the requesting user is not the owner, reject the request
+                        res.status(403).json("Error": "You are not allowed to access this private resource");
+                    }
+                }
+            }
+
+
+            
         }
     })
 });
