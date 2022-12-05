@@ -850,7 +850,7 @@ router.put('/comments/:comment_id', checkJwt, function (req, res) {
 /*
 partially update a comment
 */
-router.patch('/comments/:comment_id', function (req, res) {
+router.patch('/comments/:comment_id', checkJwt, function (req, res) {
     // get the commentID
     const commentID = req.params.comment_id;
 
@@ -865,33 +865,45 @@ router.patch('/comments/:comment_id', function (req, res) {
             res.status(404).json({ 'Error': 'No comment with this comment_id exists' });
 
         } else {
-            // get the old comment object
-            const oldComment = comment[0];
+            // check if the requesting user is editing a comment that is not owned by them
+            const requestUserID = req.auth.sub;
+            const userID = comment[0].userID;
+            if (requestUserID !== userID) {
+                res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+            } else {
+                // check if the request Accept header is set to application/json
+                const accepts = req.accepts('application/json');
+                if(!accepts){
+                    res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+                } else {
+                    // get the old comment object
+                    const oldComment = comment[0];
 
-            // get the attributes to be updated and update the old comment object accordingly
-            if ("content" in attributes) {
-                oldComment["content"] = attributes["content"];
+                    // get the attributes to be updated and update the old post object accordingly
+                    if ("content" in attributes) {
+                        oldComment["content"] = attributes["content"];
+                    }
+                    if ("creationDate" in attributes) {
+                        oldComment["creationDate"] = attributes["creationDate"];
+                    }
+                    if ("upvote" in attributes) {
+                        oldComment["upvote"] = attributes["upvote"];
+                    }
+
+                    // edit the post 
+                    editComment(commentID, oldComment.content, oldComment.creationDate, oldComment.upvote, oldComment.userID, oldComment.postID).then(key => {
+                    // create the self link that points to the new post object
+                    const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
+
+                    // add the self link to the updated comment object
+                    oldComment["self"] = self;
+                    // return a success and the newly edited comment object
+                    res.status(200).json(oldComment);
+                    });
+                }
             }
-            if ("creationDate" in attributes) {
-                oldComment["creationDate"] = attributes["creationDate"];
-            }
-            if ("upvote" in attributes) {
-                oldComment["upvote"] = attributes["upvote"];
-            }
-
-            // edit the comment 
-            editComment(commentID, oldComment.content, oldComment.creationDate, oldComment.upvote).then(key => {
-               // create the self link that points to the new comment object
-               const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
-
-               // add the self link to the updated comment object
-               oldComment["self"] = self;
-
-               // return a success and the newly edited comment object
-               res.status(200).json(oldComment);
-            })
         }
-    })
+    });
 });
 
 
