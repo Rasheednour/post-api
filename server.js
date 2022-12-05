@@ -239,9 +239,9 @@ Params: content: the comment content.
 
 Returns: The function returns the key to the created entity.
 */
-function createComment(content, creationDate, upvote) {
+function createComment(content, creationDate, upvote, userID) {
     let key = datastore.key(COMMENTS);
-    const newComment = { "content": content, "creationDate": creationDate, "upvote": upvote};
+    const newComment = { "content": content, "creationDate": creationDate, "upvote": upvote, "userID":userID, "postID": null};
     return datastore.save({ "key": key, "data": newComment }).then(() => { return key });
 }
 
@@ -505,9 +505,6 @@ router.get('/posts/:post_id', checkJwt, function(req,res){
                     }
                 }
             }
-
-
-            
         }
     })
 });
@@ -679,17 +676,28 @@ router.post('/comments', checkJwt, function (req,res){
         // send back an error if an attribute is missing
         res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
     } else {
-        // get the content, creationDate, and upvote from the request body
-        const content = req.body.content;
-        const creationDate = req.body.creationDate;
-        const upvote = req.body.upvote;
-        // create a new comment in Datastore
-        createComment(content, creationDate, upvote).then((key) => {
-            // create a self link that points to the new comment using the post information
-            const self = req.protocol + "://" + req.get("host") + "/comments/" + key.id;  
-            // send a successful response and a JSON object that contains the comment information
-            res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "upvote": upvote, "self": self});
-        })
+        // check if the request Accept header is set to application/json
+        const accepts = req.accepts('application/json');
+        if(!accepts){
+            res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+        } else {
+            // the request is authenticated and valid, proceed with creating the comment
+            // get the content, creationDate, and upvote status from the request body
+            const content = req.body.content;
+            const creationDate = req.body.creationDate;
+            const upvote = req.body.upvote;
+
+            // get the unique user ID which is the value of sub in the JWT
+            const userID = req.auth.sub;
+    
+            // create a new comment in Datastore
+            createComment(content, creationDate, upvote, userID).then((key) => {
+                // create a self link that points to the new post using the post information
+                const self = req.protocol + "://" + req.get("host") + "/comments/" + key.id;  
+                // send a successful response and a JSON object that contains the post information
+                res.status(201).json({"id": key.id, "content": content, "creationDate": creationDate, "upvote": upvote, "postID": null, "userID": userID, "self": self});
+            });
+        }
     }
 });
 
@@ -698,7 +706,7 @@ router.post('/comments', checkJwt, function (req,res){
 /*
 Get a comment from Datastore using a commentID
 */
-router.get('/comments/:comment_id', function(req,res){
+router.get('/comments/:comment_id', checkJwt, function(req,res){
     // get the commentID from the path parameters
     const commentID = req.params.comment_id;
 
@@ -709,16 +717,23 @@ router.get('/comments/:comment_id', function(req,res){
         if (comment === undefined || comment === null) {
             res.status(404).json({'Error': 'No comment with commentID exists.'});
         } else {
-            // construct a self link
-            const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
+            // check if a valid accept header exists in the request
+            const accepts = req.accepts('application/json');
+            if(!accepts){
+            res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+            } else {
+                // construct a self link
+                const self = req.protocol + "://" + req.get("host") + "/comments/" + commentID;
 
-            // add the self attribute to the user object
-            comment['self'] = self;
+                // add the self attribute to the user object
+                comment['self'] = self;
 
-            // return the post object
-            res.status(200).json(comment);
+                // return the post object
+                res.status(200).json(comment);
+            }
+            
         }
-    })
+    });
 });
 
 
