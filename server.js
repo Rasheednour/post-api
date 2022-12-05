@@ -160,27 +160,30 @@ Returns: All post entities in Datastore
 */
 function getPosts(req) {
     
-
+    // get the unique userID of the user requesting to see their posts
+    const userID = req.auth.sub;
     // run a query on Datastore to get all posts
-    const query = datastore.createQuery(POSTS);
+    const query = datastore.createQuery(POSTS).filter('userID', '=', userID);
     return datastore.runQuery(query).then((entities) => {
-        // get total number of posts in Datastore
+        // get total number of user posts for this user
         const totalItems = entities[0].length;
-        
         // run another query for posts, but limit results this time
-        let q = datastore.createQuery(POSTS).limit(5);
+        let q = datastore.createQuery(POSTS).filter('userID', '=', userID).limit(5);
         let results = {};
         let prev;
-
+        console.log('here1');
         if(Object.keys(req.query).includes("cursor")){
             prev = req.protocol + "://" + req.get("host") + "/posts" + "?cursor=" + req.query.cursor;
             q = q.start(req.query.cursor);
         }
+        console.log('here2');
         return datastore.runQuery(q).then( (entities) => {
+            console.log('here3');
             results.posts = entities[0].map(fromDatastore);
             // if(typeof prev !== 'undefined'){
             //     results.previous = prev;
             // }
+            console.log('here4');
             if(entities[1].moreResults !== Datastore.NO_MORE_RESULTS ){
                 results.next = req.protocol + "://" + req.get("host") + "/posts" + "?cursor=" + entities[1].endCursor;
                 results.total_items = totalItems;
@@ -214,9 +217,9 @@ Params: id: the existing post ID
 
 Returns: None
 */
-function editPost(id, content, creationDate, public) {
+function editPost(id, content, creationDate, public, userID, comments, upvotes) {
     const key = datastore.key([POSTS, parseInt(id, 10)]);
-    const post = { "content": content, "creationDate": creationDate, "public": public };
+    const post = { "content": content, "creationDate": creationDate, "public": public, "userID": userID, "comments": comments, "upvotes": upvotes };
     return datastore.save({ "key": key, "data": post });
 }
 
@@ -512,11 +515,17 @@ router.get('/posts/:post_id', checkJwt, function(req,res){
 /*
 Get all post entities from Datastore
 */
-router.get('/posts', function(req,res){
-    getPosts(req).then(posts => {
-        res.status(200).json(posts);
-    })
-})
+router.get('/posts', checkJwt, function(req,res){
+    // check if request accepts application/json
+    const accepts = req.accepts('application/json');
+    if(!accepts){
+        res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+    } else {
+        getPosts(req).then(posts => {
+            res.status(200).json(posts);
+        })
+    }
+});
 
 
 /*
@@ -558,7 +567,7 @@ router.delete('/posts', function (req, res) {
 Edit a post
 */
 
-router.put('/posts/:post_id', function (req, res) {
+router.put('/posts/:post_id', checkJwt, function (req, res) {
     // check if one of the required attributes is missing
     if (!("content" in req.body) || !("creationDate" in req.body) || !("public" in req.body)){
         res.status(400).json({ 'Error': 'The request object is missing at least one of the required attributes' });
@@ -574,23 +583,30 @@ router.put('/posts/:post_id', function (req, res) {
                 res.status(404).json({ 'Error': 'No post with this post_id exists' });
 
             } else {
-                // get the new post attributes
-                const content = req.body.content;
-                const creationDate = req.body.creationDate;
-                const public = req.body.public;
+                // check if the requesting user is editing a post that is not owned by them
+                const requestUserID = req.auth.sub;
+                const userID = post[0].userID;
+                if (requestUserID !== userID) {
+                    res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+                } else {
+                    // get the new post attributes
+                    const content = req.body.content;
+                    const creationDate = req.body.creationDate;
+                    const public = req.body.public;
 
-                // edit the post in Datastore
-                editPost(postID, content, creationDate, public).then(key => {
+                    // edit the post in Datastore
+                    editPost(postID, content, creationDate, public, post[0].userID, post[0].comments, post[0].upvotes).then(key => {
                     
-                    // create the self link that points to the new post object
-                    const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+                        // create the self link that points to the new post object
+                        const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
 
-                    // form the new post object
-                    const newPost = {"id": postID, "content": content, "creationDate": creationDate, "public": public, "self": self};
+                        // form the new post object
+                        const newPost = {"id": postID, "content": content, "creationDate": creationDate, "public": public, "self": self};
 
-                    // return a success and the newly edited post object
-                    res.status(200).json(newPost);
-                })
+                        // return a success and the newly edited post object
+                        res.status(200).json(newPost);
+                });
+                }   
             }
         })
     }
@@ -600,7 +616,7 @@ router.put('/posts/:post_id', function (req, res) {
 /*
 partially update a post
 */
-router.patch('/posts/:post_id', function (req, res) {
+router.patch('/posts/:post_id', checkJwt, function (req, res) {
     // get the postID
     const postID = req.params.post_id;
 
