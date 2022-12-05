@@ -906,9 +906,55 @@ router.patch('/comments/:comment_id', checkJwt, function (req, res) {
     });
 });
 
+/*
+Add a comment to a post, and modify the post's comments attribute and upvotes attribute accordingly
+*/
+router.put('/posts/:post_id/comments/:comment_id', checkJwt, function (req, res) {
+    
+    // get the commentID and postID from the request path parameters
+    const commentID = req.params.comment_id;
+    const postID = req.params.post_id;
 
-router.put('/posts/:post_id/comments/:comment_id', function (req, res) {
-    console.log('pass');
+    // get the comment to be added to the post
+    getComment(commentID).then(comment => {
+        
+        // check if the requesting user is adding a comment that is not owned by them
+        const requestUserID = req.auth.sub;
+        const userID = comment[0].userID;
+        if (requestUserID !== userID) {
+            res.status(401).json({ 'Error': 'Missing/invalid JWT' });
+        } else {
+            // get the post
+            getPost(postID).then(post => {
+                // check if the post is public
+                if (!post[0].public) {
+                    res.status(403).json({"Error": "You are not allowed to access this private resource"});
+                } else {
+                    // get current post attributes
+                    const content = post[0].content;
+                    const creationDate = post[0].creationDate;
+                    const public = post[0].public;
+                    const userID = post[0].userID;
+                    let comments = post[0].comments;
+                    let upvotes = post[0].upvotes;
+
+                    // add the commentID to the list of comments in the post
+                    comments.push(commentID);
+
+                    // increment the post's upvotes if the upvote attribute in the comment is True
+                    if (comment[0].upvote) {
+                        upvotes += 1;
+                    }
+
+                    // edit the comment in Datastore
+                    editPost(postID, content, creationDate, public, userID, comments, upvotes).then(key => {
+                        // return a success 
+                        res.status(200).end();
+                    });
+                }
+            });
+        }
+    });
 });
 
 /* -------------Start Server ------------- */
