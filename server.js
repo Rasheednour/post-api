@@ -586,23 +586,30 @@ router.put('/posts/:post_id', checkJwt, function (req, res) {
                 if (requestUserID !== userID) {
                     res.status(401).json({ 'Error': 'Missing/invalid JWT' });
                 } else {
-                    // get the new post attributes
-                    const content = req.body.content;
-                    const creationDate = req.body.creationDate;
-                    const public = req.body.public;
+                    // check if the request Accept header is set to application/json
+                    const accepts = req.accepts('application/json');
+                    if(!accepts){
+                        res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+                    } else {
+                         // get the new post attributes
+                        const content = req.body.content;
+                        const creationDate = req.body.creationDate;
+                        const public = req.body.public;
 
-                    // edit the post in Datastore
-                    editPost(postID, content, creationDate, public, post[0].userID, post[0].comments, post[0].upvotes).then(key => {
-                    
-                        // create the self link that points to the new post object
-                        const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+                        // edit the post in Datastore
+                        editPost(postID, content, creationDate, public, post[0].userID, post[0].comments, post[0].upvotes).then(key => {
+                        
+                            // create the self link that points to the new post object
+                            const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
 
-                        // form the new post object
-                        const newPost = {"id": postID, "content": content, "creationDate": creationDate, "public": public, "self": self};
+                            // form the new post object
+                            const newPost = {"id": postID, "content": content, "creationDate": creationDate, "public": public, "self": self};
 
-                        // return a success and the newly edited post object
-                        res.status(200).json(newPost);
-                });
+                            // return a success and the newly edited post object
+                            res.status(200).json(newPost);
+                        });
+                    }
+                   
                 }   
             }
         })
@@ -634,32 +641,37 @@ router.patch('/posts/:post_id', checkJwt, function (req, res) {
             if (requestUserID !== userID) {
                 res.status(401).json({ 'Error': 'Missing/invalid JWT' });
             } else {
-                // get the old post object
-                const oldPost = post[0];
+                // check if the request Accept header is set to application/json
+                const accepts = req.accepts('application/json');
+                if(!accepts){
+                    res.status(406).json({'Error': 'The request Accept header should allow application/json'});
+                } else {
+                    // get the old post object
+                    const oldPost = post[0];
 
-                // get the attributes to be updated and update the old post object accordingly
-                if ("content" in attributes) {
-                    oldPost["content"] = attributes["content"];
-                }
-                if ("creationDate" in attributes) {
-                    oldPost["creationDate"] = attributes["creationDate"];
-                }
-                if ("public" in attributes) {
-                    oldPost["public"] = attributes["public"];
-                }
+                    // get the attributes to be updated and update the old post object accordingly
+                    if ("content" in attributes) {
+                        oldPost["content"] = attributes["content"];
+                    }
+                    if ("creationDate" in attributes) {
+                        oldPost["creationDate"] = attributes["creationDate"];
+                    }
+                    if ("public" in attributes) {
+                        oldPost["public"] = attributes["public"];
+                    }
 
-                // edit the post 
-                editPost(postID, oldPost.content, oldPost.creationDate, oldPost.public, oldPost.userID, oldPost.comments, oldPost.upvotes).then(key => {
-                // create the self link that points to the new post object
-                const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
+                    // edit the post 
+                    editPost(postID, oldPost.content, oldPost.creationDate, oldPost.public, oldPost.userID, oldPost.comments, oldPost.upvotes).then(key => {
+                    // create the self link that points to the new post object
+                    const self = req.protocol + "://" + req.get("host") + "/posts/" + postID;
 
-                // add the self link to the updated post object
-                oldPost["self"] = self;
-                // return a success and the newly edited post object
-                res.status(200).json(oldPost);
-            });
+                    // add the self link to the updated post object
+                    oldPost["self"] = self;
+                    // return a success and the newly edited post object
+                    res.status(200).json(oldPost);
+                    });
+                }
             }
-            
         }
     })
 });
