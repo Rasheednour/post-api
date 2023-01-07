@@ -10,16 +10,18 @@ const url = require('url');
 const jwt_decode = require('jwt-decode');
 const {expressjwt: jwt} = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
-
+// import the client secret JSON file which was downloaded from Google Cloud
+const json = require('./client_secret.json');
 const router = express.Router();
 // create a consts to store the entity names
 const USERS = "Users";
 const POSTS = "Posts";
 const COMMENTS = "Comments";
 
-const CLIENT_ID = '1049983258452-vgak6vsasjmuagjj49lrt3tab5nbs08e.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
-const REDIRECT_URI = 'https://mohamras-portfolio-project.uc.r.appspot.com/oauth';
+// get client ID, client SECRET, and redirect URI from the downloaded JSON file from Google Cloud 
+const CLIENT_ID = json.web.client_id;
+const CLIENT_SECRET = json.web.client_secret;
+const REDIRECT_URI = json.web.redirect_uris[0];
 
 // create a new oauth2Client
 const oauth2Client = new google.auth.OAuth2(
