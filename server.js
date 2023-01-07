@@ -19,7 +19,7 @@ const COMMENTS = "Comments";
 
 const CLIENT_ID = '1049983258452-vgak6vsasjmuagjj49lrt3tab5nbs08e.apps.googleusercontent.com';
 const CLIENT_SECRET = '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';
-const REDIRECT_URI = 'http://localhost:8080/oauth';
+const REDIRECT_URI = 'https://mohamras-portfolio-project.uc.r.appspot.com/oauth';
 
 // create a new oauth2Client
 const oauth2Client = new google.auth.OAuth2(
