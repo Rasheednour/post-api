@@ -1,7 +1,8 @@
 # Introduction
-- Add your project logo.
-- Write a short introduction to the project.
-- If you are using badges, add them here.
+Posts API is a simple REST API that models a social media application using Users, Posts, and Comments as entities.
+The API is developed to be deployed on Google Cloud, and uses GCP tools like App Engine for deployment, and Datastore for storage.
+The API also has a front-end that uses Google OAuth 2.0 to authenticate new users, generate JWTs, and automatically create User entities whenever a new user is authenticated.
+When a new user is authenticated and a new user entity is created, a new JWT will be given to the user, to be used to make authenticated to the API to create Posts and Comments on Posts.
 
 ## Index
 
@@ -31,7 +32,7 @@ Add a detailed introduction about the project here, everything you want the read
 ## Usage
 Write about how to use this project.
 
-###  :electric_plug: Installation
+### Installation
 - Steps on how to install this project, to use it.
 - Be very detailed here, For example, if you have tools which run on different operating systems, write installation steps for all of them.
 
@@ -55,34 +56,6 @@ Write about setting up the working environment for your project.
 - How to download the project...
 - How to install dependencies...
 
-
-### File Structure
-Add a file structure here with the basic details about files, below is an example.
-
-```
-.
-├── assets
-│   ├── css
-│   │   ├── index-ui.css
-│   │   └── rate-ui.css
-│   ├── images
-│   │   ├── icons
-│   │   │   ├── shrink-button.png
-│   │   │   └── umbrella.png
-│   │   ├── logo_144.png
-│   │   └── Untitled-1.psd
-│   └── javascript
-│       ├── index.js
-│       └── rate.js
-├── CNAME
-├── index.html
-├── rate.html
-└── README.md
-```
-
-| No | File Name | Details 
-|----|------------|-------|
-| 1  | index | Entry point
 
 ### Build
 Write the build Instruction here.
