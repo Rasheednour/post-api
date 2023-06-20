@@ -25,6 +25,7 @@ The following endpoints are available in the API:
 - Responses:
   - `201 Created`: Post created successfully.
   - `400 Bad Request`: Invalid request.
+  - `401 Unauthorized`: Invalid JWT (JSON Web Token).
   - `406 Not Acceptable`: Invalid accept header.
 
 ### Get a Post
@@ -56,7 +57,7 @@ The following endpoints are available in the API:
 - Responses:
   - `200 OK`: Post edited successfully.
   - `400 Bad Request`: Invalid request.
-  - `401 Unauthorized`: Invalid JWT (JSON Web Token).
+  - `401 Unauthorized`: Invalid JWT.
   - `404 Not Found`: Post not found.
   - `406 Not Acceptable`: Invalid accept header.
 
