@@ -1,127 +1,192 @@
-# Introduction
-Posts API is a simple REST API that models a social media application using Users, Posts, and Comments as entities.
-The API is developed to be deployed on Google Cloud, and uses GCP tools like App Engine for deployment, and Datastore for storage.
-The API also has a front-end that uses Google OAuth 2.0 to authenticate new users, generate JWTs, and automatically create User entities whenever a new user is authenticated.
-When a new user is authenticated and a new user entity is created, a new JWT will be given to the user, to be used to make authenticated to the API to create Posts and Comments on Posts.
+# Posts API
 
-## Index
+API for managing posts and comments in a social media application.
 
-- [About](#beginner-about)
-- [Usage](#zap-usage)
-  - [Installation](#electric_plug-installation)
-  - [Commands](#package-commands)
-- [Development](#wrench-development)
-  - [Pre-Requisites](#notebook-pre-requisites)
-  - [Developmen Environment](#nut_and_bolt-development-environment)
-  - [File Structure](#file_folder-file-structure)
-  - [Build](#hammer-build)  
-  - [Deployment](#rocket-deployment)  
-- [Community](#cherry_blossom-community)
-  - [Contribution](#fire-contribution)
-  - [Branches](#cactus-branches)
-  - [Guideline](#exclamation-guideline)  
-- [FAQ](#question-faq)
-- [Resources](#page_facing_up-resources)
-- [Gallery](#camera-gallery)
-- [Credit/Acknowledgment](#star2-creditacknowledgment)
-- [License](#lock-license)
+## Description
 
-## About
-Add a detailed introduction about the project here, everything you want the reader to know.
+The Posts API provides endpoints to perform CRUD (Create, Read, Update, Delete) operations on users, posts, and comments in a social media application. The API is implemented using Node.js and Express, deployed on Google Cloud Platform's App Engine, and uses Google Datastore as the database. User authentication is implemented using Google OAuth 2.0.
 
-## Usage
-Write about how to use this project.
+## API Endpoints
 
-### Installation
-- Steps on how to install this project, to use it.
-- Be very detailed here, For example, if you have tools which run on different operating systems, write installation steps for all of them.
+The following endpoints are available in the API:
 
-```
-$ add installations steps if you have to.
-```
+### Create a Post
 
-### Commands
-- Commands to start the project.
+- Endpoint: `POST /posts`
+- Description: Create a new post.
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "creationDate": "string",
+    "public": "boolean"
+  }
+  ```
+- Responses:
+  - `201 Created`: Post created successfully.
+  - `400 Bad Request`: Invalid request.
+  - `406 Not Acceptable`: Invalid accept header.
 
-## Development
-If you want other people to contribute to this project, this is the section, make sure you always add this.
+### Get a Post
 
-### Pre-Requisites
-List all the pre-requisites the system needs to develop this project.
-- A tool
-- B tool
+- Endpoint: `GET /posts/{post_id}`
+- Description: Get a specific post by its ID.
+- Parameters:
+  - `post_id` (path parameter): The ID of the post.
+- Responses:
+  - `200 OK`: Post retrieved successfully.
+  - `404 Not Found`: Post not found.
 
-### Development Environment
-Write about setting up the working environment for your project.
-- How to download the project...
-- How to install dependencies...
+### Edit a Post
 
+- Endpoint: `PUT /posts/{post_id}`
+- Description: Edit an existing post.
+- Parameters:
+  - `post_id` (path parameter): The ID of the post.
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "creationDate": "string",
+    "public": "boolean",
+    "comments": ["string"],
+    "upvotes": "integer"
+  }
+  ```
+- Responses:
+  - `200 OK`: Post edited successfully.
+  - `400 Bad Request`: Invalid request.
+  - `401 Unauthorized`: Invalid JWT (JSON Web Token).
+  - `404 Not Found`: Post not found.
+  - `406 Not Acceptable`: Invalid accept header.
 
-### Build
-Write the build Instruction here.
+### Partially Update a Post
 
-### Deployment
-Write the deployment instruction here.
+- Endpoint: `PATCH /posts/{post_id}`
+- Description: Partially update an existing post.
+- Parameters:
+  - `post_id` (path parameter): The ID of the post.
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "creationDate": "string",
+    "public": "boolean",
+    "comments": ["string"],
+    "upvotes": "integer"
+  }
+  ```
+- Responses:
+  - `200 OK`: Post updated successfully.
+  - `401 Unauthorized`: Invalid JWT.
+  - `404 Not Found`: Post not found.
+  - `406 Not Acceptable`: Invalid accept header.
 
-## Community
+### Delete a Post
 
-If it's open-source, talk about the community here, ask social media links and other links.
+- Endpoint: `DELETE /posts/{post_id}`
+- Description: Delete a post.
+- Parameters:
+  - `post_id` (path parameter): The ID of the post.
+- Responses:
+  - `204 No Content`: Post deleted successfully.
+  - `401 Unauthorized`: Invalid JWT.
+  - `404 Not Found`: Post not found.
 
- ### Contribution
+### Create a Comment
 
- Your contributions are always welcome and appreciated. Following are the things you can do to contribute to this project.
+- Endpoint: `POST /comments`
+- Description: Create a new comment.
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "creationDate": "string",
+    "upvote": "boolean"
+  }
+  ```
+- Responses:
+  - `201 Created`: Comment created successfully.
+  - `400 Bad Request`: Invalid request.
+  - `406 Not Acceptable`: Invalid accept header.
 
- 1. **Report a bug** <br>
- If you think you have encountered a bug, and I should know about it, feel free to report it [here]() and I will take care of it.
+### Get a Comment
 
- 2. **Request a feature** <br>
- You can also request for a feature [here](), and if it will viable, it will be picked for development.  
+- Endpoint: `GET /comments/{comment_id}`
+- Description: Get a specific comment by its ID.
+- Parameters:
+  - `comment_id`
 
- 3. **Create a pull request** <br>
- It can't get better then this, your pull request will be appreciated by the community. You can get started by picking up any open issues from [here]() and make a pull request.
+ (path parameter): The ID of the comment.
+- Responses:
+  - `200 OK`: Comment retrieved successfully.
+  - `404 Not Found`: Comment not found.
 
- > If you are new to open-source, make sure to check read more about it [here](https://www.digitalocean.com/community/tutorial_series/an-introduction-to-open-source) and learn more about creating a pull request [here](https://www.digitalocean.com/community/tutorials/how-to-create-a-pull-request-on-github).
+### Edit a Comment
 
+- Endpoint: `PUT /comments/{comment_id}`
+- Description: Edit an existing comment.
+- Parameters:
+  - `comment_id` (path parameter): The ID of the comment.
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "creationDate": "string",
+    "upvote": "boolean"
+  }
+  ```
+- Responses:
+  - `200 OK`: Comment updated successfully.
+  - `400 Bad Request`: Invalid request.
+  - `401 Unauthorized`: Invalid JWT.
+  - `404 Not Found`: Comment not found.
+  - `406 Not Acceptable`: Invalid accept header.
 
- ### Branches
+### Partially Update a Comment
 
- I use an agile continuous integration methodology, so the version is frequently updated and development is really fast.
+- Endpoint: `PATCH /comments/{comment_id}`
+- Description: Partially update an existing comment.
+- Parameters:
+  - `comment_id` (path parameter): The ID of the comment.
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "creationDate": "string",
+    "upvote": "boolean"
+  }
+  ```
+- Responses:
+  - `200 OK`: Comment updated successfully.
+  - `401 Unauthorized`: Invalid JWT.
+  - `404 Not Found`: Comment not found.
+  - `406 Not Acceptable`: Invalid accept header.
 
-1. **`stage`** is the development branch.
+### Add a Comment to a Post
 
-2. **`master`** is the production branch.
+- Endpoint: `PUT /posts/{post_id}/comments/{comment_id}`
+- Description: Add a comment to a specific post.
+- Parameters:
+  - `post_id` (path parameter): The ID of the post.
+  - `comment_id` (path parameter): The ID of the comment.
+- Responses:
+  - `200 OK`: Comment added to the post.
+  - `401 Unauthorized`: Invalid JWT.
+  - `403 Forbidden`: Access to private resource denied.
 
-3. No other permanent branches should be created in the main repository, you can create feature branches but they should get merged with the master.
+### Remove a Comment from a Post
 
-**Steps to work with feature branch**
+- Endpoint: `DELETE /posts/{post_id}/comments/{comment_id}`
+- Description: Remove a comment from a specific post.
+- Parameters:
+  - `post_id` (path parameter): The ID of the post.
+  - `comment_id` (path parameter): The ID of the comment.
+- Responses:
+  - `204 No Content`: Comment removed from the post.
+  - `401 Unauthorized`: Invalid JWT.
+  - `403 Forbidden`: Access to private resource denied.
 
-1. To start working on a new feature, create a new branch prefixed with `feat` and followed by feature name. (ie. `feat-FEATURE-NAME`)
-2. Once you are done with your changes, you can raise PR.
+## Deployment
 
-**Steps to create a pull request**
-
-1. Make a PR to `stage` branch.
-2. Comply with the best practices and guidelines e.g. where the PR concerns visual elements it should have an image showing the effect.
-3. It must pass all continuous integration checks and get positive reviews.
-
-After this, changes will be merged.
-
-
-### Guideline
-coding guidelines or other things you want people to follow should follow.
-
-
-## FAQ
-You can optionally add a FAQ section about the project.
-
-## Resources
-Add important resources here
-
-## Gallery
-Pictures of your project.
-
-## Credit/Acknowledgment
-Credit the authors here.
-
-## License
-Add a license here, or a link to it.
+The API is deployed on Google Cloud Platform's App Engine. The API base URL is `https://posts-and-comments-api.ew.r.appspot.com/`.
